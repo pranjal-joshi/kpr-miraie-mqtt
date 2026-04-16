@@ -1,23 +1,21 @@
-"""MirAIe MQTT coordinator — bridges cloud MQTT to local broker with HA MQTT Discovery."""
+"""MirAIe MQTT coordinator — publishes HA MQTT Discovery configs.
+
+Cloud MQTT bridging is handled by the standalone miraie-bridge container.
+This component discovers devices, publishes MQTT Discovery, and manages auth tokens.
+"""
 from __future__ import annotations
 
 import json
 import logging
-import ssl
 
-import certifi
-import paho.mqtt.client as mqtt
-
-from homeassistant.components.mqtt import async_publish, async_subscribe
+from homeassistant.components.mqtt import async_publish
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 
 from .api import MirAIeApi
 from .const import (
-    CLOUD_MQTT_HOST,
-    CLOUD_MQTT_PORT,
     CONF_ACCESS_TOKEN,
     CONF_EXPIRES_AT,
     CONF_HOME_ID,
@@ -33,7 +31,7 @@ HA_DISCOVERY_PREFIX = "homeassistant"
 
 
 class MirAIeCoordinator:
-    """Bridges cloud MQTT ↔ local MQTT broker with HA MQTT Discovery."""
+    """Discovers devices and publishes HA MQTT Discovery configs."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
@@ -47,12 +45,10 @@ class MirAIeCoordinator:
         self.api._password = entry.data[CONF_PASSWORD]
 
         self.devices: dict[str, dict] = {}
-        self._cloud_client: mqtt.Client | None = None
-        self._unsub_mqtt: list = []
         self._unsub_timer = None
 
     async def async_setup(self) -> None:
-        """Discover devices, publish HA discovery, connect cloud MQTT, subscribe locally."""
+        """Discover devices and publish HA MQTT Discovery configs."""
         if self.api.needs_refresh():
             await self.api.async_refresh_token(self.hass)
             self._update_entry_token()
@@ -81,32 +77,15 @@ class MirAIeCoordinator:
         # Publish HA MQTT Discovery configs
         await self._publish_discovery()
 
-        # Connect cloud MQTT
-        await self.hass.async_add_executor_job(self._connect_cloud)
-
-        # Subscribe to local control topics — forward to cloud
-        for device_id in self.devices:
-            topic = f"{TOPIC_PREFIX}/{device_id}/control"
-            unsub = await async_subscribe(
-                self.hass, topic, self._make_control_callback(device_id), qos=1
-            )
-            self._unsub_mqtt.append(unsub)
-
-        # Token refresh timer
+        # Token refresh timer (bridge container also refreshes, but keep in sync)
         self._unsub_timer = async_track_time_interval(
             self.hass, self._async_check_token, timedelta(hours=1)
         )
 
     async def async_unload(self) -> None:
-        """Cleanup: unpublish discovery, disconnect."""
-        for unsub in self._unsub_mqtt:
-            unsub()
+        """Cleanup: unpublish discovery."""
         if self._unsub_timer:
             self._unsub_timer()
-        if self._cloud_client:
-            self._cloud_client.disconnect()
-            self._cloud_client.loop_stop()
-        # Unpublish discovery
         await self._unpublish_discovery()
 
     # ── HA MQTT Discovery ──────────────────────────────────────────
@@ -324,85 +303,17 @@ class MirAIeCoordinator:
 
         return entities
 
-    # ── Cloud MQTT ─────────────────────────────────────────────────
-
-    def _connect_cloud(self) -> None:
-        """Connect to MirAIe cloud MQTT broker."""
-        client = mqtt.Client(
-            mqtt.CallbackAPIVersion.VERSION1,
-            client_id=f"hass-kpr-miraie-{self.api.home_id[:8]}",
-        )
-        client.tls_set(ca_certs=certifi.where(), tls_version=ssl.PROTOCOL_TLSv1_2)
-        client.username_pw_set(self.api.home_id, self.api.access_token)
-        client.on_connect = self._on_cloud_connect
-        client.on_message = self._on_cloud_message
-        client.on_disconnect = self._on_cloud_disconnect
-        client.connect(CLOUD_MQTT_HOST, CLOUD_MQTT_PORT, 60)
-        client.loop_start()
-        self._cloud_client = client
-        _LOGGER.info("Cloud MQTT connected to %s:%s", CLOUD_MQTT_HOST, CLOUD_MQTT_PORT)
-
-    def _on_cloud_connect(self, client, userdata, flags, rc) -> None:
-        if rc != 0:
-            _LOGGER.error("Cloud MQTT connection failed: rc=%s", rc)
-            return
-        topic = f"{self.api.user_id}/{self.api.home_id}/#"
-        client.subscribe(topic)
-        _LOGGER.debug("Cloud MQTT subscribed to %s", topic)
-
-    def _on_cloud_message(self, client, userdata, msg) -> None:
-        parts = msg.topic.split("/")
-        if len(parts) < 4:
-            return
-
-        device_id = parts[2]
-        msg_type = "/".join(parts[3:])
-
-        if device_id not in self.devices:
-            return
-
-        # Don't bridge control messages back (prevents loop)
-        if msg_type == "control":
-            return
-
-        # Publish to local MQTT broker (retained)
-        payload = msg.payload.decode(errors="replace")
-        local_topic = f"{TOPIC_PREFIX}/{device_id}/{msg_type}"
-        self.hass.async_create_task(
-            async_publish(self.hass, local_topic, payload, retain=True)
-        )
-
-    def _on_cloud_disconnect(self, client, userdata, rc) -> None:
-        if rc != 0:
-            _LOGGER.warning("Cloud MQTT disconnected (rc=%s), auto-reconnecting", rc)
-
-    # ── Local MQTT control ─────────────────────────────────────────
-
-    def _make_control_callback(self, device_id: str):
-        """Forward local control commands to cloud."""
-        @callback
-        def _handle(msg) -> None:
-            if not self._cloud_client or not self._cloud_client.is_connected():
-                _LOGGER.warning("Cloud not connected, dropping command for %s", device_id)
-                return
-            cloud_topic = f"{self.api.user_id}/{self.api.home_id}/{device_id}/control"
-            self._cloud_client.publish(cloud_topic, msg.payload)
-            _LOGGER.debug("Forwarded command to %s: %s", device_id, msg.payload[:200])
-
-        return _handle
-
     # ── Token refresh ──────────────────────────────────────────────
 
     async def _async_check_token(self, now=None) -> None:
+        """Periodically check and refresh token."""
         if self.api.needs_refresh():
             _LOGGER.info("Refreshing MirAIe token")
             await self.api.async_refresh_token(self.hass)
             self._update_entry_token()
-            if self._cloud_client:
-                self._cloud_client.username_pw_set(self.api.home_id, self.api.access_token)
-                await self.hass.async_add_executor_job(self._cloud_client.reconnect)
 
     def _update_entry_token(self) -> None:
+        """Update config entry with refreshed token."""
         self.hass.config_entries.async_update_entry(
             self.entry,
             data={
