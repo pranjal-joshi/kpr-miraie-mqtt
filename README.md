@@ -93,22 +93,74 @@ The integration bridges MirAIe's cloud MQTT to your local MQTT broker:
 
 Your Home Assistant only communicates with your local MQTT broker — it never talks to the cloud directly.
 
+## Bridge Setup (Required)
+
+The HA component handles device discovery and entity creation. A separate **bridge** container relays MQTT messages between MirAIe cloud and your local broker. Both are needed.
+
+### 1. Configure bridge
+
+```bash
+cd bridge
+cp credentials-email.json.example credentials.json
+# Edit credentials.json with your MirAIe login
+
+cp devices.yaml.example devices.yaml
+# Edit devices.yaml with your MQTT broker details and device IDs
+```
+
+To discover device IDs:
+```bash
+pip install -r requirements.txt
+python3 miraie_bridge.py
+```
+
+### 2. Deploy bridge
+
+```bash
+docker compose up -d
+```
+
+### 3. Verify
+
+```bash
+docker logs miraie-bridge
+```
+
+You should see devices connecting and status flowing.
+
+## Architecture
+
+```
+┌──────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────┐
+│ MirAIe   │◄───►│ miraie-bridge│◄───►│ MQTT Broker   │◄───►│   Home   │
+│ Cloud    │     │ (Docker)     │     │ (EMQX/Mosq.) │     │ Assistant│
+│ MQTT     │     │              │     │              │     │          │
+└──────────┘     └──────────────┘     └──────────────┘     └──────────┘
+                  relay control        local topics          MQTT
+                  + status             miraie/{id}/*         Discovery
+```
+
+- **Bridge**: relays cloud MQTT ↔ local broker (control + status)
+- **HA Component**: publishes MQTT Discovery configs, manages auth tokens
+
 ## Troubleshooting
 
 **Integration not found after install:**
 - Restart Home Assistant after installing
-- Check that `custom_components/miraie_mqtt/` exists in your HA config directory
+- Check that `custom_components/kpr_miraie_mqtt/` exists in your HA config directory
 
 **Login fails:**
 - Verify your credentials work in the MirAIe mobile app
 - Try both email and mobile number formats
 
 **Entities show unavailable:**
+- Check that the bridge container is running: `docker logs miraie-bridge`
 - Check that your MQTT broker is running and HA's MQTT integration is connected
 - Verify the AC is online in the MirAIe app
 
 **Controls not responding:**
-- Check HA logs for `miraie_mqtt` errors
+- Check bridge logs: `docker logs miraie-bridge`
+- Ensure bridge is forwarding commands (look for `[local→cloud]` in logs)
 - The AC must be online (check the Online binary sensor)
 
 ## License

@@ -1,0 +1,29 @@
+mqtt:
+  host: 10.10.10.10          # your local MQTT broker IP
+  port: 1883
+  username: mqtt              # your MQTT broker username
+  password: changeme          # your MQTT broker password
+
+ha_discovery_prefix: homeassistant
+
+cloud:
+  broker: mqtt.miraie.in
+  port: 8883
+
+# Run `python3 miraie_bridge.py` to discover your device IDs.
+# They will be listed under each space in your MirAIe home.
+devices:
+  - name: Living Room AC         # friendly name for HA
+    slug: miraie_living_room      # HA entity ID prefix (no spaces)
+    space: Living Room
+    device_id: xxxxxxxxxxxx       # from discovery output
+    manufacturer: KPR
+    model: Panasonic MirAIe Smart AC
+
+  # Add more devices as needed:
+  # - name: Bedroom AC
+  #   slug: miraie_bedroom
+  #   space: Bedroom
+  #   device_id: xxxxxxxxxxxx
+  #   manufacturer: KPR
+  #   model: Panasonic MirAIe Smart AC

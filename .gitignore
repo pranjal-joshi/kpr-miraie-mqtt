@@ -3,3 +3,6 @@ __pycache__/
 *.pyo
 .DS_Store
 .ruff_cache/
+bridge/credentials.json
+bridge/devices.yaml
+*.log
