@@ -108,11 +108,19 @@ cd kpr-miraie-mqtt/bridge
 
 ### 2. Configure credentials
 
+The bridge reads `credentials.json` — you must create this file:
+
+**If you login with email:**
 ```bash
 cp credentials-email.json.example credentials.json
-# Edit credentials.json with your MirAIe app login (email + password)
-# For mobile login, use credentials-mobile.json.example instead
 ```
+
+**If you login with mobile number:**
+```bash
+cp credentials-mobile.json.example credentials.json
+```
+
+Edit `credentials.json` with your MirAIe app login details.
 
 ### 3. Configure MQTT broker
 
