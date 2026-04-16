@@ -629,7 +629,28 @@ def main():
     # Full bridge mode
     auth = CloudAuth(args.credentials)
     auth.login()
-    auth.get_homes()
+    homes = auth.get_homes()
+
+    # Auto-discover devices if none configured
+    if not config.get("devices"):
+        print("\n[discovery] No devices in devices.yaml — listing all devices:\n")
+        print("Add the following to your devices.yaml under 'devices:':\n")
+        for home in homes:
+            for space in home.get("spaces", []):
+                for dev in space.get("devices", []):
+                    device_id = dev.get("deviceId", "")
+                    name = dev.get("deviceName", "AC")
+                    space_name = space.get("spaceName", "")
+                    slug = f"kpr_{device_id}"
+                    print(f"  - name: {name}")
+                    print(f"    slug: {slug}")
+                    print(f"    space: {space_name}")
+                    print(f"    device_id: {device_id}")
+                    print(f"    manufacturer: KPR")
+                    print(f"    model: Panasonic MirAIe Smart AC")
+                    print()
+        print("[discovery] Copy the above into devices.yaml, then restart the bridge.")
+        return
 
     # Print device status
     for dev in config["devices"]:

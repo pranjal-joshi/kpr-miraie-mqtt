@@ -106,23 +106,42 @@ git clone https://github.com/hareeshmu/kpr-miraie-mqtt.git
 cd kpr-miraie-mqtt/bridge
 ```
 
-### 2. Configure
+### 2. Configure credentials
 
 ```bash
 cp credentials-email.json.example credentials.json
-# Edit credentials.json with your MirAIe login
-
-cp devices.yaml.example devices.yaml
-# Edit devices.yaml with your MQTT broker details and device IDs
+# Edit credentials.json with your MirAIe app login (email + password)
+# For mobile login, use credentials-mobile.json.example instead
 ```
 
-To discover device IDs:
+### 3. Configure devices
+
+```bash
+cp devices.yaml.example devices.yaml
+# Edit devices.yaml with your MQTT broker IP and credentials
+# Leave the devices section empty for now
+```
+
+### 4. Discover your devices
+
 ```bash
 pip install -r requirements.txt
 python3 miraie_bridge.py
 ```
 
-### 3. Deploy bridge
+The bridge will login, discover all your ACs, and print the device config:
+```yaml
+  - name: Living Room AC
+    slug: kpr_05f448d0cfa6
+    space: Living Room
+    device_id: 05f448d0cfa6
+    manufacturer: KPR
+    model: Panasonic MirAIe Smart AC
+```
+
+Copy the output into `devices.yaml` under `devices:`.
+
+### 5. Deploy bridge
 
 **Important:** Run all commands from inside the `bridge/` directory.
 
@@ -139,7 +158,7 @@ pip install -r requirements.txt
 python3 miraie_bridge.py
 ```
 
-### 3. Verify
+### 6. Verify
 
 ```bash
 docker logs miraie-bridge
