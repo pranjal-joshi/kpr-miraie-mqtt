@@ -644,8 +644,8 @@ def main():
         except Exception as e:
             print(f"  {dev['name']}: {e}")
 
-    # Publish HA discovery
-    publish_discovery(config)
+    # HA component handles MQTT Discovery — bridge only relays.
+    # To publish discovery manually, use: --discover-only
 
     # Start bridge
     bridge = MirAIeBridge(auth, config)
