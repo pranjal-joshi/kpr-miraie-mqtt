@@ -22,11 +22,12 @@ Home Assistant custom integration for Panasonic MirAIe smart air conditioners vi
 
 ### HACS (Recommended)
 
-1. Open HACS in Home Assistant
-2. Click the three dots menu → **Custom repositories**
-3. Add `https://github.com/hareeshmu/kpr-miraie-mqtt` as **Integration**
-4. Search for "Panasonic MirAIe MQTT" and install
-5. Restart Home Assistant
+1. Open HACS in Home Assistant → **Integrations**
+2. Click the three dots menu (top right) → **Custom repositories**
+3. URL: `https://github.com/hareeshmu/kpr-miraie-mqtt`
+4. Category: **Integration** → Click **Add**
+5. Search for "KPR MirAIe" and click **Install**
+6. Restart Home Assistant
 
 ### Manual
 
