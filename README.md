@@ -199,6 +199,9 @@ You should see devices connecting and status flowing.
 
 ## Changelog
 
+### v1.2.8
+- New KPR brand icon
+
 ### v1.2.7
 - Updated brand icon — cropped and optimized for HA display
 
