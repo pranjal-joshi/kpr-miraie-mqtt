@@ -197,6 +197,28 @@ You should see devices connecting and status flowing.
 **`IsADirectoryError: 'devices.yaml'`:**
 - You created `devices.yaml` as a folder instead of a file. Fix: `rm -rf devices.yaml && cp devices.yaml.example devices.yaml`
 
+## Changelog
+
+### v1.1.0
+- AC model number shown in device info (e.g. CS-CU-NU18ZKY5W)
+- Energy Today sensor (daily kWh, polled every 30 min)
+- Total Operating Hours sensor
+- Filter Dust Level sensor
+- Filter Cleaning Required alert
+- MAC address and serial number in device info
+- Auto-discover devices on first run (no manual device ID lookup)
+
+### v1.0.0
+- Initial release
+- Climate control (temp, HVAC mode, fan speed)
+- Vertical and horizontal swing (positional, Auto/1-5)
+- Eco, Powerful, Nanoe, Display, Buzzer switches
+- Converti mode select
+- Room temperature and WiFi signal sensors
+- Online status binary sensor
+- Config flow with email/mobile login
+- Token auto-refresh
+
 ## License
 
 MIT
