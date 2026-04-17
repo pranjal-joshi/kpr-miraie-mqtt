@@ -8,15 +8,22 @@ Home Assistant custom integration for Panasonic MirAIe smart air conditioners vi
 
 ![Device Page](https://raw.githubusercontent.com/hareeshmu/kpr-miraie-mqtt/main/images/device-page.png)
 
+> 🎨 **Also available: a matching Lovelace card** — [LVGL-inspired](https://github.com/hareeshmu/climate-control-display) circular dial,
+> mode-colored halo, room-temp needle, pill-row popups, responsive layout. See
+> **[card/README.md](card/README.md)** for install + YAML + screenshots.
+>
+> <img src="card/images/cool.png" width="360" alt="KPR MirAIe Card preview"/>
+
 ## Features
 
 - **Zero YAML** — UI-based setup, auto-discovers all your ACs
-- **Full climate control** — temperature, HVAC mode, fan speed
+- **Full climate control** — temperature, HVAC mode (cool / heat / auto / dry / fan), fan speed
 - **Positional swing** — vertical and horizontal vane positions (Auto, 1-5)
-- **Extra controls** — Eco, Powerful, Nanoe, Display, Buzzer switches
-- **Converti mode** — compressor capacity select (0/50/100%)
+- **Extra controls** — Eco (`acem`), Clean (`acec`), Powerful, Nanoe, Display, Buzzer switches
+- **Converti8 mode** — compressor capacity select with 9 levels (Off / 40-90% / FC / HC)
 - **Diagnostics** — room temperature, WiFi signal, online status
 - **Auto token refresh** — no manual re-authentication needed
+- **Matching Lovelace card** — polished circular dial with drag-to-set, see [`card/`](card/)
 
 ## Installation
 
@@ -198,6 +205,13 @@ You should see devices connecting and status flowing.
 - You created `devices.yaml` as a folder instead of a file. Fix: `rm -rf devices.yaml && cp devices.yaml.example devices.yaml`
 
 ## Changelog
+
+### v1.3.0
+- **New Lovelace card** (`card/`) — [LVGL-inspired](https://github.com/hareeshmu/climate-control-display) circular dial, mode-color halo, draggable handle, room-temp needle, pill-row popups, responsive layout, auto-derived companion entities. Ships as an HACS plugin alongside the integration. See [card/README.md](card/README.md)
+- **Protocol fix: Clean vs Eco** — `acec` is the MirAIe app's Clean button, not Eco. `acem` is real Eco mode. Both are now exposed as separate switches (`switch.kpr_<id>_acec` kept for history; new `switch.kpr_<id>_acem` added)
+- **Converti8** — expanded from 3 levels (0/50/100) to 9 (Off / 40-90% / FC / HC)
+- Bridge: unknown-field logger to help discover future MirAIe protocol additions
+- Integration manifest version bumped to 1.3.0
 
 ### v1.2.8
 - New KPR brand icon

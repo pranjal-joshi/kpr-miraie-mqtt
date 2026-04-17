@@ -1,8 +1,10 @@
 # KPR MirAIe Card
 
-A custom Lovelace card for Panasonic MirAIe smart ACs. LVGL-inspired circular dial,
-mode-colored halo, tick ring with warm/cool arc split, room-temp needle, falling
-snowflakes, and pill-row popups for swing / Converti8 / features / energy.
+A custom Lovelace card for Panasonic MirAIe smart ACs. Circular dial inspired by the
+[LVGL climate-control-display](https://github.com/hareeshmu/climate-control-display)
+ESPHome project — mode-colored halo, tick ring with warm/cool arc split, room-temp
+needle, falling snowflakes, and pill-row popups for swing / Converti8 / features /
+energy.
 
 Designed to pair with the **[KPR MirAIe Local MQTT](../)** Home Assistant
 integration in this repo.
