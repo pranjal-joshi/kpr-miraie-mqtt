@@ -199,6 +199,10 @@ You should see devices connecting and status flowing.
 
 ## Changelog
 
+### v1.2.1
+- Fix weekly energy sensor (MirAIe Weekly API broken, now sums daily values)
+- Removed stale Energy Today entity
+
 ### v1.2.0
 - Energy sensors: daily, weekly, monthly consumption (kWh)
 - Energy polled from cloud API every 30 min
