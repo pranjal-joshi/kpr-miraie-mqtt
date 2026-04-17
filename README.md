@@ -10,9 +10,9 @@ Home Assistant custom integration for Panasonic MirAIe smart air conditioners vi
 
 > 🎨 **Also available: a matching Lovelace card** — [LVGL-inspired](https://github.com/hareeshmu/climate-control-display) circular dial,
 > mode-colored halo, room-temp needle, pill-row popups, responsive layout. See
-> **[card/README.md](card/README.md)** for install + YAML + screenshots.
+> **[kpr-miraie-card](https://github.com/hareeshmu/kpr-miraie-card)** for install + YAML + screenshots.
 >
-> <img src="card/images/cool.png" width="360" alt="KPR MirAIe Card preview"/>
+> <img src="https://raw.githubusercontent.com/hareeshmu/kpr-miraie-card/main/images/cool.png" width="360" alt="KPR MirAIe Card preview"/>
 
 ## Features
 
@@ -23,7 +23,7 @@ Home Assistant custom integration for Panasonic MirAIe smart air conditioners vi
 - **Converti8 mode** — compressor capacity select with 9 levels (Off / 40-90% / FC / HC)
 - **Diagnostics** — room temperature, WiFi signal, online status
 - **Auto token refresh** — no manual re-authentication needed
-- **Matching Lovelace card** — polished circular dial with drag-to-set, see [`card/`](card/)
+- **Matching Lovelace card** — polished circular dial with drag-to-set, see [kpr-miraie-card](https://github.com/hareeshmu/kpr-miraie-card)
 
 ## Installation
 
@@ -207,7 +207,7 @@ You should see devices connecting and status flowing.
 ## Changelog
 
 ### v1.3.0
-- **New Lovelace card** (`card/`) — [LVGL-inspired](https://github.com/hareeshmu/climate-control-display) circular dial, mode-color halo, draggable handle, room-temp needle, pill-row popups, responsive layout, auto-derived companion entities. Ships as an HACS plugin alongside the integration. See [card/README.md](card/README.md)
+- **New Lovelace card** ([kpr-miraie-card](https://github.com/hareeshmu/kpr-miraie-card)) — [LVGL-inspired](https://github.com/hareeshmu/climate-control-display) circular dial, mode-color halo, draggable handle, room-temp needle, pill-row popups, responsive layout, auto-derived companion entities. Shipped as a separate HACS plugin repo.
 - **Protocol fix: Clean vs Eco** — `acec` is the MirAIe app's Clean button, not Eco. `acem` is real Eco mode. Both are now exposed as separate switches (`switch.kpr_<id>_acec` kept for history; new `switch.kpr_<id>_acem` added)
 - **Converti8** — expanded from 3 levels (0/50/100) to 9 (Off / 40-90% / FC / HC)
 - Bridge: unknown-field logger to help discover future MirAIe protocol additions
