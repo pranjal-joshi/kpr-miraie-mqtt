@@ -199,6 +199,9 @@ You should see devices connecting and status flowing.
 
 ## Changelog
 
+### v1.2.6
+- Add brand/ folder for HA 2026.3+ local icon support
+
 ### v1.2.5
 - New logo
 - Fix swapped room temperature on affected AC models (PR #1 by @timaseth)
