@@ -260,9 +260,10 @@ def build_climate_discovery(dev, prefix, local_prefix):
         "entity_category": "diagnostic",
     }))
 
-    # --- Eco mode switch ---
+    # --- Clean mode switch (acec — historically mislabeled as "Eco" in this bridge;
+    # the MirAIe app's Clean button flips this field, not acem.) ---
     entities.append(("switch", f"{slug}_eco", {
-        "name": "Eco Mode",
+        "name": "Clean Mode",
         "unique_id": f"miraie_{device_id}_eco",
         "object_id": f"{slug}_eco",
         "device": device_block,
@@ -271,8 +272,24 @@ def build_climate_discovery(dev, prefix, local_prefix):
         "state_on": "on",
         "state_off": "off",
         "command_topic": control_topic,
-        "payload_on": '{"acec":"on","ki":0,"cnt":"an","sid":"0"}',
-        "payload_off": '{"acec":"off","ki":0,"cnt":"an","sid":"0"}',
+        "payload_on": '{"acec":"on","ki":9,"cnt":"an","sid":"0"}',
+        "payload_off": '{"acec":"off","ki":9,"cnt":"an","sid":"0"}',
+        "icon": "mdi:broom",
+    }))
+
+    # --- Eco mode switch (acem — true Eco; auto-sets target to 26°C on the AC side) ---
+    entities.append(("switch", f"{slug}_eco_mode", {
+        "name": "Eco Mode",
+        "unique_id": f"miraie_{device_id}_eco_mode",
+        "object_id": f"{slug}_eco_mode",
+        "device": device_block,
+        "state_topic": status_topic,
+        "value_template": "{{ value_json.acem }}",
+        "state_on": "on",
+        "state_off": "off",
+        "command_topic": control_topic,
+        "payload_on": '{"acem":"on","ki":10,"cnt":"an","sid":"0"}',
+        "payload_off": '{"acem":"off","ki":10,"cnt":"an","sid":"0"}',
         "icon": "mdi:leaf",
     }))
 
@@ -390,7 +407,7 @@ def build_climate_discovery(dev, prefix, local_prefix):
         "value_template": "{{ value_json.cnv }}",
         "command_topic": control_topic,
         "command_template": '{"cnv":{{ value }},"ki":0,"cnt":"an","sid":"0"}',
-        "options": ["0", "50", "100"],
+        "options": ["0", "40", "50", "60", "70", "80", "90", "100", "110"],
         "icon": "mdi:percent",
     }))
 
@@ -508,8 +525,14 @@ class MirAIeBridge:
         if device_id not in self.devices:
             return
 
-        # Don't bridge control messages back from cloud (prevents loop)
+        # Don't bridge control messages back from cloud (prevents loop) — but
+        # still log them so we can see raw commands the MirAIe app sends.
         if msg_type == "control":
+            try:
+                dev_name = self.devices[device_id].get("name", device_id)
+                print(f"[cloud/ctrl ] {dev_name}: {payload}")
+            except Exception:
+                pass
             return
 
         local_topic = f"{LOCAL_TOPIC_PREFIX}/{device_id}/{msg_type}"
@@ -531,12 +554,19 @@ class MirAIeBridge:
 
         self.local_client.publish(local_topic, payload, retain=True)
 
-        # Log status updates with key fields
+        # Log status updates with key fields + flag any unknown fields (useful for
+        # discovering undocumented MirAIe protocol fields like Self-Clean).
         if msg_type == "status":
             try:
                 d = json.loads(payload)
                 dev_name = self.devices[device_id].get("name", device_id)
+                KNOWN = {"ps","acmd","actmp","rmtmp","acfs","acvs","achs","acec","acem",
+                         "acpm","acng","acdc","bzr","cnv","rssi","ki","cnt","sid",
+                         "ts","onlineStatus","errCode","wt","ver"}
+                unknown = {k: v for k, v in d.items() if k not in KNOWN}
                 print(f"[cloud→local] {dev_name}: ps={d.get('ps')} acmd={d.get('acmd')} actmp={d.get('actmp')} acfs={d.get('acfs')} acvs={d.get('acvs')} achs={d.get('achs')}")
+                if unknown:
+                    print(f"[cloud→local] {dev_name}: UNKNOWN_FIELDS={unknown}")
             except Exception:
                 pass
 

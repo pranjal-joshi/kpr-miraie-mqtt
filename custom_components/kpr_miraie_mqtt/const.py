@@ -35,8 +35,8 @@ FAN_MODES = ["auto", "quiet", "low", "medium", "high"]
 # Swing positions
 SWING_POSITIONS = ["Auto", "1", "2", "3", "4", "5"]
 
-# Converti options
-CONVERTI_OPTIONS = ["0", "50", "100"]
+# Converti options (cnv int values). 0=Off, 40-90=percentage levels, 100=FC, 110=HC
+CONVERTI_OPTIONS = ["0", "40", "50", "60", "70", "80", "90", "100", "110"]
 
 # Temp range
 TEMP_MIN = 16

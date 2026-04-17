@@ -6,3 +6,10 @@ __pycache__/
 bridge/credentials.json
 bridge/devices.yaml
 *.log
+
+# Node / Rollup (card build)
+card/node_modules/
+card/dist/*.map
+
+# Local dev sandbox (standalone mockup, not shipped)
+card/sandbox/

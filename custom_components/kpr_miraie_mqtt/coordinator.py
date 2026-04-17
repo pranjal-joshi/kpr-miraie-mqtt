@@ -263,13 +263,17 @@ class MirAIeCoordinator:
             "entity_category": "diagnostic",
         }))
 
-        # Switches: eco, powerful, nanoe, display, buzzer
-        for key, name, icon in [
-            ("acec", "Eco Mode", "mdi:leaf"),
-            ("acpm", "Powerful Mode", "mdi:flash"),
-            ("acng", "Nanoe", "mdi:air-purifier"),
-            ("acdc", "Display", "mdi:monitor"),
-            ("bzr", "Buzzer", "mdi:volume-high"),
+        # Switches: clean, eco, powerful, nanoe, display, buzzer
+        # Note: `acec` was historically labeled "Eco" — it is actually the Clean button in
+        # the MirAIe app. True Eco mode uses `acem`. Labels corrected; unique_id of the
+        # `acec` entity kept stable so existing HA history is preserved.
+        for key, name, icon, ki in [
+            ("acec", "Clean Mode", "mdi:broom", 9),
+            ("acem", "Eco Mode", "mdi:leaf", 10),
+            ("acpm", "Powerful Mode", "mdi:flash", 0),
+            ("acng", "Nanoe", "mdi:air-purifier", 0),
+            ("acdc", "Display", "mdi:monitor", 0),
+            ("bzr", "Buzzer", "mdi:volume-high", 0),
         ]:
             entities.append(("switch", f"{slug}_{key}", {
                 "name": name,
@@ -281,8 +285,8 @@ class MirAIeCoordinator:
                 "state_on": "on",
                 "state_off": "off",
                 "command_topic": control_topic,
-                "payload_on": json.dumps({key: "on", "ki": 0, "cnt": "an", "sid": "0"}),
-                "payload_off": json.dumps({key: "off", "ki": 0, "cnt": "an", "sid": "0"}),
+                "payload_on": json.dumps({key: "on", "ki": ki, "cnt": "an", "sid": "0"}),
+                "payload_off": json.dumps({key: "off", "ki": ki, "cnt": "an", "sid": "0"}),
                 "icon": icon,
             }))
 
@@ -336,7 +340,7 @@ class MirAIeCoordinator:
             "value_template": "{{ value_json.cnv }}",
             "command_topic": control_topic,
             "command_template": '{"cnv":{{ value }},"ki":0,"cnt":"an","sid":"0"}',
-            "options": ["0", "50", "100"],
+            "options": ["0", "40", "50", "60", "70", "80", "90", "100", "110"],
             "icon": "mdi:percent",
         }))
 

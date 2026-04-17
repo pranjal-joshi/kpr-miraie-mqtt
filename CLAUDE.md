@@ -4,9 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Home Assistant custom integration + standalone MQTT bridge for Panasonic MirAIe smart ACs. Two components work together:
+Home Assistant custom integration + standalone MQTT bridge for Panasonic MirAIe smart ACs, plus a custom Lovelace card. Three components:
 - **HA component** (`custom_components/kpr_miraie_mqtt/`) — config flow, device discovery, MQTT Discovery publishing
 - **Bridge** (`bridge/`) — Docker container relaying cloud MQTT ↔ local MQTT broker
+- **Card** (`card/`) — Lovelace custom card (`kpr-miraie-card`) with LVGL-inspired dial. Built via Rollup. Sandbox at `card/sandbox/dial.html` for visual iteration (gitignored).
 
 The HA component does NOT connect to cloud MQTT itself. It only publishes MQTT Discovery configs so HA auto-creates entities. The bridge handles all cloud relay.
 
@@ -29,7 +30,9 @@ MirAIe Cloud MQTT ←→ bridge (paho-mqtt) ←→ Local MQTT Broker ←→ HA (
 - Token expires in ~84 days (`expiresIn: 7257599s`)
 - Device cert-pins TLS on all endpoints — DNS override / MITM is not possible
 - `achs` (horizontal swing) is positional 0-5, not just on/off
-- Converti mode (`cnv`) uses int values 0/50/100, not the "Auto" mapping used by swing
+- Converti mode (`cnv`) supports 9 levels: **0 (Off), 40, 50, 60, 70, 80, 90, 100 (FC), 110 (HC)** — not the "Auto" mapping used by swing. (Earlier versions only exposed 0/50/100 — the app supports the full set)
+- **`acec` = Clean mode** (the MirAIe app's "Clean" button). **`acem` = Eco mode** (the app's "Eco mode" button). They are SEPARATE fields — earlier integration versions incorrectly labeled `acec` as "Eco Mode". As of 1.3.0 both switches are exposed correctly.
+- `rssi` WiFi signal is exposed as its own sensor entity (`sensor.kpr_{id}_rssi`, dBm, device_class=signal_strength)
 
 ## Commands
 
@@ -54,6 +57,18 @@ docker logs miraie-bridge
 
 # Deploy HA component
 scp -r custom_components/kpr_miraie_mqtt root@<HA_IP>:/config/custom_components/
+
+# Build the Lovelace card
+cd card
+pnpm install
+pnpm build           # → dist/kpr-miraie-card.js
+
+# Iterate on dial visuals without HA deploy loop
+open card/sandbox/dial.html   # standalone mockup with live sliders
+
+# Deploy card
+scp card/dist/kpr-miraie-card.js <user>@<HA_IP>:/config/www/kpr-miraie-card.js
+# Then in HA: Settings → Dashboards → Resources → bump ?v= → hard-refresh
 ```
 
 ## Consistency Rules
@@ -64,6 +79,10 @@ scp -r custom_components/kpr_miraie_mqtt root@<HA_IP>:/config/custom_components/
 - MQTT topics use prefix `miraie/` (not `kpr_miraie/`) — this is the local broker topic namespace
 - Display name is "KPR MirAIe Local MQTT" — consistent across manifest, hacs.json, strings.json, translations
 - Bridge must NOT auto-publish MQTT Discovery (HA component handles it) — use `--discover-only` flag for manual
+- Card version is in `card/package.json` + a `KPR_CARD_VERSION` banner at the top of `card/src/kpr-miraie-card.js` — keep both in sync
+- Card auto-derives companion entity IDs from the climate entity's slug (e.g. `climate.kpr_xyz` → `switch.kpr_xyz_acem`, `sensor.kpr_xyz_rssi`). Users can override any field in YAML. Entity naming in coordinator must follow `{slug}_{suffix}` or auto-derive breaks.
+- Inside the card's `css\`...\``template literal, backticks are FORBIDDEN (even inside comments). They close the template literal. Learned the hard way — use regular quotes in CSS comments.
+- SVG elements that need a guaranteed SVG namespace (animated ticks, needle, handle) must be populated via `createElementNS` in the `updated()` lifecycle. Lit's `html\`\``inside an SVG parent creates HTML-namespaced elements that render as invisible `HTMLUnknownElement`s.
 
 ## MirAIe Control Payload Format
 

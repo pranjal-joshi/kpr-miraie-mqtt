@@ -249,6 +249,24 @@ You should see devices connecting and status flowing.
 - Config flow with email/mobile login
 - Token auto-refresh
 
+## Contributors
+
+A warm thank-you to everyone who has helped shape this project 💙
+
+- [@hareeshmu](https://github.com/hareeshmu) — original author & maintainer
+- [@timaseth](https://github.com/timaseth) — swapped room-temperature fix (PR #1)
+
+Bug reports, issues, and PRs are all genuinely appreciated — the integration, bridge, and card are better because of the community poking at them on real hardware. If you've tested a new MirAIe model, caught a quirk, or just helped validate behaviour, thank you.
+
+> _Special thanks to everyone who shared MirAIe app captures and packet dumps that helped uncover undocumented protocol fields (e.g. `acec` = Clean vs `acem` = Eco, the full 9-level Converti8 set)._
+
+### 🇮🇳 Special shout-out — Home Automation India
+
+A huge thank-you to the **[Home Automation India Discord](https://discord.gg/KfAjVkAG)** — a community for home automation enthusiasts of Indian origin. The testing, encouragement, real-world device diversity, and late-night debugging sessions from this group made this project possible. Come say hi — lots of friendly, knowledgeable folks building cool things.
+
+Want to contribute? Open an issue, send a PR, or drop by the [Home Automation India Discord](https://discord.gg/KfAjVkAG) — even "works on my model" confirmations help.
+
 ## License
 
 MIT
+
