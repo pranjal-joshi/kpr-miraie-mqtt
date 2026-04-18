@@ -1,9 +1,9 @@
 ---
-# HA Supervisor reads this file and passes the correct base image as
-# BUILD_FROM to the Dockerfile for each target architecture.
+# Plain python:3.12-slim is used for all architectures.
+# No s6-overlay or bashio — the bridge runs as PID 1 via ENTRYPOINT directly.
 build_from:
-  aarch64: ghcr.io/home-assistant/aarch64-base-python:3.12-alpine3.20
-  amd64: ghcr.io/home-assistant/amd64-base-python:3.12-alpine3.20
-  armv7: ghcr.io/home-assistant/armv7-base-python:3.12-alpine3.20
-  armhf: ghcr.io/home-assistant/armhf-base-python:3.12-alpine3.20
-  i386: ghcr.io/home-assistant/i386-base-python:3.12-alpine3.20
+  aarch64: python:3.12-slim
+  amd64: python:3.12-slim
+  armv7: python:3.12-slim
+  armhf: python:3.12-slim
+  i386: python:3.12-slim

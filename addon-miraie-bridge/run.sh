@@ -1,8 +1,8 @@
-#!/usr/bin/env bashio
+#!/usr/bin/env bash
 # MirAIe MQTT Bridge — HA Add-on entrypoint
 # Reads /data/options.json, writes credentials.json + devices.yaml, then
-# launches miraie_bridge.py. On subsequent runs the MQTT/cloud settings are
-# refreshed while discovered devices in /data/devices.yaml are preserved.
+# launches miraie_bridge.py as PID 1. Runs on plain python:3.12-slim —
+# no s6-overlay or bashio required.
 
 set -e
 
@@ -10,70 +10,73 @@ CONFIG_PATH=/data/options.json
 CREDS_FILE=/data/credentials.json
 DEVICES_FILE=/data/devices.yaml
 
+log() { echo "[addon] $*"; }
+die() { echo "[addon] FATAL: $*" >&2; exit 1; }
+
 # ── Read add-on options ─────────────────────────────────────────────
 
-LOGIN_TYPE=$(bashio::config 'login_type')
-USERNAME=$(bashio::config 'username')
-PASSWORD=$(bashio::config 'password')
-CLOUD_BROKER=$(bashio::config 'cloud_broker')
-CLOUD_PORT=$(bashio::config 'cloud_port')
-HA_DISC_PREFIX=$(bashio::config 'ha_discovery_prefix')
+LOGIN_TYPE=$(jq -r '.login_type // "email"'         "$CONFIG_PATH")
+USERNAME=$(jq -r '.username   // ""'                "$CONFIG_PATH")
+PASSWORD=$(jq -r '.password   // ""'                "$CONFIG_PATH")
+CLOUD_BROKER=$(jq -r '.cloud_broker // "mqtt.miraie.in"' "$CONFIG_PATH")
+CLOUD_PORT=$(jq -r '.cloud_port    // 8883'         "$CONFIG_PATH")
+HA_DISC_PREFIX=$(jq -r '.ha_discovery_prefix // "homeassistant"' "$CONFIG_PATH")
 
-OPT_MQTT_HOST=$(bashio::config 'mqtt_host')
-OPT_MQTT_PORT=$(bashio::config 'mqtt_port')
-OPT_MQTT_USER=$(bashio::config 'mqtt_username')
-OPT_MQTT_PASS=$(bashio::config 'mqtt_password')
+OPT_MQTT_HOST=$(jq -r '.mqtt_host     // ""' "$CONFIG_PATH")
+OPT_MQTT_PORT=$(jq -r '.mqtt_port     // ""' "$CONFIG_PATH")
+OPT_MQTT_USER=$(jq -r '.mqtt_username // ""' "$CONFIG_PATH")
+OPT_MQTT_PASS=$(jq -r '.mqtt_password // ""' "$CONFIG_PATH")
 
 # ── Resolve MQTT broker ─────────────────────────────────────────────
-# Priority: explicit user options > HA Supervisor-injected Mosquitto credentials
+# Priority 1: explicit user options
+# Priority 2: HA Supervisor MQTT service API (Mosquitto add-on)
+# Priority 3: fatal — nothing configured
 
-if bashio::config.has_value 'mqtt_host'; then
-    bashio::log.info "Using user-configured MQTT broker: ${OPT_MQTT_HOST}:${OPT_MQTT_PORT}"
-    MQTT_HOST_FINAL="${OPT_MQTT_HOST}"
+if [ -n "$OPT_MQTT_HOST" ]; then
+    log "Using user-configured MQTT broker: ${OPT_MQTT_HOST}:${OPT_MQTT_PORT:-1883}"
+    MQTT_HOST_FINAL="$OPT_MQTT_HOST"
     MQTT_PORT_FINAL="${OPT_MQTT_PORT:-1883}"
-    MQTT_USER_FINAL="${OPT_MQTT_USER}"
-    MQTT_PASS_FINAL="${OPT_MQTT_PASS}"
-elif bashio::services.available "mqtt"; then
-    bashio::log.info "Using HA Supervisor MQTT service (Mosquitto add-on)"
-    MQTT_HOST_FINAL=$(bashio::services mqtt "host")
-    MQTT_PORT_FINAL=$(bashio::services mqtt "port")
-    MQTT_USER_FINAL=$(bashio::services mqtt "username")
-    MQTT_PASS_FINAL=$(bashio::services mqtt "password")
-else
-    bashio::log.fatal "No MQTT broker available. Install the Mosquitto add-on or set mqtt_host in add-on options."
-    exit 1
-fi
+    MQTT_USER_FINAL="$OPT_MQTT_USER"
+    MQTT_PASS_FINAL="$OPT_MQTT_PASS"
+elif [ -n "${SUPERVISOR_TOKEN:-}" ]; then
+    log "Querying HA Supervisor for MQTT service credentials..."
+    MQTT_SVC=$(curl -s -f \
+        -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+        http://supervisor/services/mqtt 2>/dev/null || true)
 
-bashio::log.info "MQTT broker: ${MQTT_HOST_FINAL}:${MQTT_PORT_FINAL} (user: ${MQTT_USER_FINAL})"
+    if [ -n "$MQTT_SVC" ] && echo "$MQTT_SVC" | jq -e '.data.host' >/dev/null 2>&1; then
+        MQTT_HOST_FINAL=$(echo "$MQTT_SVC" | jq -r '.data.host')
+        MQTT_PORT_FINAL=$(echo "$MQTT_SVC" | jq -r '.data.port // 1883')
+        MQTT_USER_FINAL=$(echo "$MQTT_SVC" | jq -r '.data.username // ""')
+        MQTT_PASS_FINAL=$(echo "$MQTT_SVC" | jq -r '.data.password // ""')
+        log "Using HA Mosquitto add-on: ${MQTT_HOST_FINAL}:${MQTT_PORT_FINAL}"
+    else
+        die "Mosquitto add-on not found via Supervisor API. Install it or set mqtt_host manually."
+    fi
+else
+    die "No MQTT broker configured and SUPERVISOR_TOKEN not available. Set mqtt_host in add-on options."
+fi
 
 # ── Write credentials.json ──────────────────────────────────────────
 
-bashio::log.info "Writing credentials to ${CREDS_FILE}"
-if [ "${LOGIN_TYPE}" = "mobile" ]; then
-    jq -n \
-        --arg m "${USERNAME}" \
-        --arg p "${PASSWORD}" \
-        '{"mobile": $m, "password": $p}' > "${CREDS_FILE}"
+log "Writing credentials to ${CREDS_FILE}"
+if [ "$LOGIN_TYPE" = "mobile" ]; then
+    jq -n --arg m "$USERNAME" --arg p "$PASSWORD" \
+        '{"mobile": $m, "password": $p}' > "$CREDS_FILE"
 else
-    jq -n \
-        --arg e "${USERNAME}" \
-        --arg p "${PASSWORD}" \
-        '{"email": $e, "password": $p}' > "${CREDS_FILE}"
+    jq -n --arg e "$USERNAME" --arg p "$PASSWORD" \
+        '{"email": $e, "password": $p}' > "$CREDS_FILE"
 fi
 
 # ── Write / update devices.yaml ─────────────────────────────────────
-# First run: create from scratch.
-# Subsequent runs: update MQTT/cloud/prefix settings only, PRESERVE the
-# [devices] list that was auto-discovered and written back by the bridge.
+# First run  : create from scratch.
+# Later runs : update MQTT/cloud/prefix only — preserve discovered devices.
 
-# Check if user has manually specified devices in add-on options
-DEVICE_COUNT=$(jq '.devices | length' "${CONFIG_PATH}")
+DEVICE_COUNT=$(jq '.devices | length' "$CONFIG_PATH")
 
-if [ ! -f "${DEVICES_FILE}" ]; then
-    bashio::log.info "First run — creating ${DEVICES_FILE}"
-
-    # Build optional devices block from add-on options (may be empty list)
-    DEVICES_JSON=$(jq '.devices' "${CONFIG_PATH}")
+if [ ! -f "$DEVICES_FILE" ]; then
+    log "First run — creating ${DEVICES_FILE}"
+    DEVICES_JSON=$(jq '.devices // []' "$CONFIG_PATH")
 
     python3 - <<PYEOF
 import yaml, json
@@ -84,14 +87,14 @@ mqtt = {
     'username': '${MQTT_USER_FINAL}',
     'password': '${MQTT_PASS_FINAL}',
 }
-cloud = {'broker': '${CLOUD_BROKER}', 'port': int('${CLOUD_PORT}')}
-devices_json = json.loads('''${DEVICES_JSON}''')
+cloud   = {'broker': '${CLOUD_BROKER}', 'port': int('${CLOUD_PORT}')}
+devices = json.loads(r"""${DEVICES_JSON}""")
 
 cfg = {
     'mqtt': mqtt,
     'ha_discovery_prefix': '${HA_DISC_PREFIX}',
     'cloud': cloud,
-    'devices': devices_json,
+    'devices': devices,
 }
 with open('${DEVICES_FILE}', 'w') as f:
     yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
@@ -99,15 +102,13 @@ print('[addon] ${DEVICES_FILE} created')
 PYEOF
 
 else
-    bashio::log.info "Updating MQTT/cloud settings in ${DEVICES_FILE} (preserving discovered devices)"
+    log "Updating MQTT/cloud settings in ${DEVICES_FILE} (preserving discovered devices)"
 
-    # If user has explicitly listed devices in add-on options, use those.
-    # Otherwise keep whatever the bridge auto-discovered previously.
-    if [ "${DEVICE_COUNT}" -gt "0" ]; then
-        DEVICES_JSON=$(jq '.devices' "${CONFIG_PATH}")
+    if [ "$DEVICE_COUNT" -gt "0" ]; then
+        DEVICES_JSON=$(jq '.devices' "$CONFIG_PATH")
         USE_ADDON_DEVICES="True"
     else
-        DEVICES_JSON="null"
+        DEVICES_JSON="[]"
         USE_ADDON_DEVICES="False"
     fi
 
@@ -123,14 +124,13 @@ cfg['mqtt'] = {
     'username': '${MQTT_USER_FINAL}',
     'password': '${MQTT_PASS_FINAL}',
 }
-cfg['cloud'] = {'broker': '${CLOUD_BROKER}', 'port': int('${CLOUD_PORT}')}
+cfg['cloud']               = {'broker': '${CLOUD_BROKER}', 'port': int('${CLOUD_PORT}')}
 cfg['ha_discovery_prefix'] = '${HA_DISC_PREFIX}'
 
-use_addon_devices = ${USE_ADDON_DEVICES}
-if use_addon_devices:
-    devices_json = json.loads('''${DEVICES_JSON}''')
-    cfg['devices'] = devices_json
-    print(f'[addon] Using {len(devices_json)} device(s) from add-on options')
+if ${USE_ADDON_DEVICES}:
+    devices = json.loads(r"""${DEVICES_JSON}""")
+    cfg['devices'] = devices
+    print(f'[addon] Using {len(devices)} device(s) from add-on options')
 else:
     existing = cfg.get('devices') or []
     print(f'[addon] Preserving {len(existing)} previously discovered device(s)')
@@ -143,12 +143,12 @@ fi
 
 # ── Start bridge ────────────────────────────────────────────────────
 
-bashio::log.info "Launching MirAIe MQTT Bridge..."
-bashio::log.info "  credentials : ${CREDS_FILE}"
-bashio::log.info "  devices     : ${DEVICES_FILE}"
-bashio::log.info "  cloud       : ${CLOUD_BROKER}:${CLOUD_PORT}"
-bashio::log.info "  local mqtt  : ${MQTT_HOST_FINAL}:${MQTT_PORT_FINAL}"
+log "Launching MirAIe MQTT Bridge..."
+log "  credentials : ${CREDS_FILE}"
+log "  devices     : ${DEVICES_FILE}"
+log "  cloud       : ${CLOUD_BROKER}:${CLOUD_PORT}"
+log "  local mqtt  : ${MQTT_HOST_FINAL}:${MQTT_PORT_FINAL}"
 
 exec python3 -u /app/miraie_bridge.py \
-    --config "${DEVICES_FILE}" \
-    --credentials "${CREDS_FILE}"
+    --config    "$DEVICES_FILE" \
+    --credentials "$CREDS_FILE"

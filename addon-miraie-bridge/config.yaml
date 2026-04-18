@@ -1,6 +1,6 @@
 ---
 name: MirAIe MQTT Bridge
-version: 1.0.1
+version: 1.0.2
 slug: miraie-mqtt-bridge
 description: >-
   Relay Panasonic MirAIe cloud MQTT to your local MQTT broker.
@@ -16,6 +16,10 @@ arch:
 
 startup: application
 boot: auto
+
+# Allow the add-on to query the Supervisor API (used to auto-discover
+# Mosquitto MQTT credentials when mqtt_host is left empty).
+homeassistant_api: true
 
 # Request HA Supervisor to inject local MQTT credentials automatically
 # when the Mosquitto broker add-on is installed. Users with an external
