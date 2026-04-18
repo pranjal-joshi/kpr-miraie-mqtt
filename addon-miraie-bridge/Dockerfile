@@ -1,4 +1,4 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/base:latest
+ARG BUILD_FROM=ghcr.io/hassio-addons/base:20.0.4
 FROM ${BUILD_FROM}
 
 # Install Python 3, pip, jq and curl via apk (Alpine package manager)
