@@ -1,6 +1,6 @@
 ---
 name: MirAIe MQTT Bridge
-version: 1.0.0
+version: 1.0.1
 slug: miraie-mqtt-bridge
 description: >-
   Relay Panasonic MirAIe cloud MQTT to your local MQTT broker.
