@@ -161,5 +161,5 @@ the token 1 hour before expiry and reconnects. No manual intervention needed.
 
 ## Support
 
-- Issues: https://github.com/hareeshmu/kpr-miraie-mqtt/issues
+- Issues: https://github.com/pranjal-joshi/kpr-miraie-mqtt/issues
 - Custom card: https://github.com/hareeshmu/kpr-miraie-card
