@@ -1,19 +1,21 @@
-# Use the same base as the standalone bridge — plain Python slim on Debian.
-# This avoids s6-overlay / bashio entirely. The Supervisor still manages
-# the container lifecycle (start/stop/restart/watchdog); we just run our
-# process as PID 1 directly via ENTRYPOINT.
-ARG BUILD_FROM=python:3.12-slim
+ARG BUILD_FROM=ghcr.io/hassio-addons/base:latest
 FROM ${BUILD_FROM}
 
-# Install jq (parse /data/options.json) and curl (query Supervisor MQTT API)
-RUN apt-get update && apt-get install -y --no-install-recommends jq curl \
-    && rm -rf /var/lib/apt/lists/*
+# Install Python 3, pip, jq and curl via apk (Alpine package manager)
+# jq   — parse /data/options.json in run.sh
+# curl — query Supervisor MQTT service API in run.sh
+RUN apk add --no-cache \
+    python3 \
+    py3-pip \
+    py3-yaml \
+    jq \
+    curl
 
 WORKDIR /app
 
 # Install Python package requirements
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
 # Copy bridge source
 COPY miraie_bridge.py .
@@ -22,4 +24,4 @@ COPY miraie_bridge.py .
 COPY run.sh /run.sh
 RUN chmod +x /run.sh
 
-ENTRYPOINT ["/run.sh"]
+CMD ["/run.sh"]

@@ -1,6 +1,6 @@
 ---
 name: MirAIe MQTT Bridge
-version: 1.0.2
+version: 1.0.3
 slug: miraie-mqtt-bridge
 description: >-
   Relay Panasonic MirAIe cloud MQTT to your local MQTT broker.
@@ -16,6 +16,10 @@ arch:
 
 startup: application
 boot: auto
+
+# Disable s6-overlay init — our CMD runs as PID 1 directly.
+# This is the standard pattern for simple add-ons per hassio-addons/addon-example.
+init: false
 
 # Allow the add-on to query the Supervisor API (used to auto-discover
 # Mosquitto MQTT credentials when mqtt_host is left empty).

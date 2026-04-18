@@ -1,9 +1,9 @@
 ---
-# Plain python:3.12-slim is used for all architectures.
-# No s6-overlay or bashio — the bridge runs as PID 1 via ENTRYPOINT directly.
+# hassio-addons/base is Alpine-based, arch-specific, and the standard
+# base used by official HA community add-ons.
 build_from:
-  aarch64: python:3.12-slim
-  amd64: python:3.12-slim
-  armv7: python:3.12-slim
-  armhf: python:3.12-slim
-  i386: python:3.12-slim
+  aarch64: ghcr.io/hassio-addons/base:latest
+  amd64: ghcr.io/hassio-addons/base:latest
+  armv7: ghcr.io/hassio-addons/base:latest
+  armhf: ghcr.io/hassio-addons/base:latest
+  i386: ghcr.io/hassio-addons/base:latest
