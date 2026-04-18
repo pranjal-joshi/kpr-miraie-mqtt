@@ -6,7 +6,7 @@ description: >-
   Relay Panasonic MirAIe cloud MQTT to your local MQTT broker.
   Auto-discovers AC devices on first run and bridges status/control messages
   so Home Assistant can control them without any cloud dependency at runtime.
-url: https://github.com/hareeshmu/kpr-miraie-mqtt
+url: https://github.com/pranjal-joshi/kpr-miraie-mqtt
 arch:
   - aarch64
   - amd64
