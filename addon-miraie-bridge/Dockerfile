@@ -1,14 +1,10 @@
-# HA add-on base image is Alpine-based and provided by Supervisor at build time
-ARG BUILD_FROM
+# BUILD_FROM is injected by HA Supervisor via build.yaml; the default below is
+# used only for local `docker build` testing outside of Supervisor.
+ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.12-alpine3.20
 FROM ${BUILD_FROM}
 
-# Install Python 3 and runtime dependencies
-RUN apk add --no-cache \
-    python3 \
-    py3-pip \
-    py3-yaml \
-    jq \
-    bash
+# Install runtime tools (jq for run.sh; bash for bashio)
+RUN apk add --no-cache jq bash
 
 WORKDIR /app
 
